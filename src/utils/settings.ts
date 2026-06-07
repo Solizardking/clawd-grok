@@ -90,8 +90,8 @@ export function saveProjectSettings(cwd: string, partial: Partial<ClawdSettings>
 // Uses AI_API_KEY as the primary env var (replaces GROK_API_KEY)
 
 export function getApiKey(): string | undefined {
-  // 1. Environment variable (AI_API_KEY with GROK_API_KEY as fallback)
-  const envKey = process.env.AI_API_KEY || process.env.GROK_API_KEY;
+  // 1. Environment variable — XAI_API_KEY is canonical, others are fallbacks
+  const envKey = process.env.XAI_API_KEY || process.env.AI_API_KEY || process.env.GROK_API_KEY;
   if (envKey) return envKey;
 
   // 2. User settings
@@ -105,8 +105,7 @@ export function getApiKey(): string | undefined {
 }
 
 export function getBaseURL(): string {
-  // AI_BASE_URL with GROK_BASE_URL as fallback
-  return process.env.AI_BASE_URL || process.env.GROK_BASE_URL || "https://api.openai.com/v1";
+  return process.env.AI_BASE_URL || process.env.GROK_BASE_URL || "https://api.x.ai/v1";
 }
 
 // === Solana / Phoenix Config ===

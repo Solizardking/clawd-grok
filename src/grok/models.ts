@@ -1,6 +1,5 @@
 /**
- * AI model definitions and metadata.
- * Model-agnostic — supports any OpenAI-compatible provider.
+ * xAI Grok model definitions and metadata.
  */
 
 export interface ModelDefinition {
@@ -12,84 +11,90 @@ export interface ModelDefinition {
   outputPrice: number; // per 1M tokens
   reasoning?: boolean;
   multiAgent?: boolean;
+  responsesOnly?: boolean;
+  supportsClientTools?: boolean;
+  reasoningEfforts?: string[];
   aliases?: string[];
 }
 
+export const DEFAULT_MODEL = "grok-4.3";
+
 export const MODELS: ModelDefinition[] = [
   {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    description: "OpenAI flagship multimodal model — fast, capable, great for agent reasoning",
-    contextWindow: 128_000,
-    inputPrice: 2.5,
-    outputPrice: 10.0,
-    aliases: ["4o", "gpt4o"],
-  },
-  {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    description: "Cost-effective small model for simple tasks and batch processing",
-    contextWindow: 128_000,
-    inputPrice: 0.15,
-    outputPrice: 0.6,
-    aliases: ["4o-mini", "gpt4o-mini", "mini"],
-  },
-  {
-    id: "claude-sonnet-4-20250514",
-    name: "Claude Sonnet 4",
-    description: "Anthropic's balanced model — strong reasoning with excellent tool use",
-    contextWindow: 200_000,
+    id: "grok-4.3",
+    name: "Grok 4.3",
+    description: "xAI flagship reasoning model — best for agent tasks, code, and market analysis",
+    contextWindow: 256_000,
     inputPrice: 3.0,
     outputPrice: 15.0,
     reasoning: true,
-    aliases: ["sonnet", "sonnet4", "claude-sonnet"],
+    supportsClientTools: true,
+    aliases: ["grok-4-1-fast", "xai/grok-code-fast-1"],
   },
   {
-    id: "claude-opus-4-20250514",
-    name: "Claude Opus 4",
-    description: "Anthropic's most capable model — best for complex multi-step agent tasks",
-    contextWindow: 200_000,
-    inputPrice: 15.0,
-    outputPrice: 75.0,
-    reasoning: true,
-    aliases: ["opus", "opus4", "claude-opus"],
-  },
-  {
-    id: "claude-haiku-4-5-20250514",
-    name: "Claude Haiku 4.5",
-    description: "Fastest Anthropic model — good for quick market lookups and simple tasks",
-    contextWindow: 200_000,
-    inputPrice: 0.8,
-    outputPrice: 4.0,
-    aliases: ["haiku", "haiku4", "claude-haiku"],
-  },
-  {
-    id: "gpt-4.1",
-    name: "GPT-4.1",
-    description: "OpenAI's latest — excellent instruction following and tool calling",
-    contextWindow: 1_000_000,
+    id: "grok-4.20-non-reasoning",
+    name: "Grok 4.20 (Non-reasoning)",
+    description: "Fast, cost-effective Grok model without extended reasoning — good for quick tasks",
+    contextWindow: 256_000,
     inputPrice: 2.0,
-    outputPrice: 8.0,
-    aliases: ["4.1", "gpt4.1"],
-  },
-  {
-    id: "gemini-2.5-pro",
-    name: "Gemini 2.5 Pro",
-    description: "Google's most capable model — strong reasoning, 1M context",
-    contextWindow: 1_000_000,
-    inputPrice: 1.25,
     outputPrice: 10.0,
-    reasoning: true,
-    aliases: ["gemini", "gemini-pro"],
+    supportsClientTools: true,
+    aliases: ["grok-4.20-0309-non-reasoning", "x-ai/grok-3"],
   },
   {
-    id: "gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
-    description: "Fast, cost-effective Google model — great for quick tasks",
-    contextWindow: 1_000_000,
-    inputPrice: 0.15,
-    outputPrice: 0.6,
-    aliases: ["gemini-flash", "flash"],
+    id: "grok-4.20-multi-agent-0309",
+    name: "Grok 4.20 Multi-Agent",
+    description: "Specialized Grok model for multi-agent orchestration — responses API only",
+    contextWindow: 256_000,
+    inputPrice: 2.0,
+    outputPrice: 10.0,
+    multiAgent: true,
+    responsesOnly: true,
+    supportsClientTools: false,
+    aliases: ["grok-4.20-multi-agent", "x-ai/grok-4.20-multi-agent-beta"],
+  },
+  {
+    id: "grok-4.20-0309-reasoning",
+    name: "Grok 4.20 Reasoning",
+    description: "Grok model with extended chain-of-thought reasoning for complex problems",
+    contextWindow: 256_000,
+    inputPrice: 3.0,
+    outputPrice: 15.0,
+    reasoning: true,
+    supportsClientTools: true,
+    aliases: ["grok-4.20-reasoning"],
+  },
+  {
+    id: "grok-3-mini",
+    name: "Grok 3 Mini",
+    description: "Small, fast Grok model with configurable reasoning effort — great for quick agent tasks",
+    contextWindow: 131_072,
+    inputPrice: 0.3,
+    outputPrice: 0.5,
+    reasoning: true,
+    supportsClientTools: true,
+    reasoningEfforts: ["low", "high"],
+    aliases: ["grok3-mini"],
+  },
+  {
+    id: "grok-3",
+    name: "Grok 3",
+    description: "Capable, balanced Grok model — strong at reasoning and tool use",
+    contextWindow: 131_072,
+    inputPrice: 3.0,
+    outputPrice: 15.0,
+    supportsClientTools: true,
+    aliases: ["grok3"],
+  },
+  {
+    id: "grok-code-fast-1",
+    name: "Grok Code Fast",
+    description: "Grok model optimized for code generation and agentic coding tasks",
+    contextWindow: 256_000,
+    inputPrice: 1.0,
+    outputPrice: 5.0,
+    supportsClientTools: true,
+    aliases: ["grok-code"],
   },
 ];
 
@@ -98,15 +103,19 @@ const ALIAS_MAP = new Map<string, string>();
 
 for (const m of MODELS) {
   MODEL_BY_ID.set(m.id, m);
+  ALIAS_MAP.set(m.id.toLowerCase(), m.id);
   for (const alias of m.aliases ?? []) {
     ALIAS_MAP.set(alias.toLowerCase(), m.id);
   }
-  ALIAS_MAP.set(m.id.toLowerCase(), m.id);
 }
 
 export function getModel(id: string): ModelDefinition | undefined {
   const canonical = ALIAS_MAP.get(id.toLowerCase());
   return canonical ? MODEL_BY_ID.get(canonical) : MODEL_BY_ID.get(id);
+}
+
+export function getModelInfo(id: string): ModelDefinition | undefined {
+  return getModel(id);
 }
 
 export function normalizeModelId(id: string): string {
@@ -116,4 +125,16 @@ export function normalizeModelId(id: string): string {
 
 export function listModelIds(): string[] {
   return MODELS.map((m) => m.id);
+}
+
+export function getSupportedReasoningEfforts(id: string): string[] {
+  const info = getModel(id);
+  return info?.reasoningEfforts ?? [];
+}
+
+export function getEffectiveReasoningEffort(id: string, effort?: string): string | undefined {
+  const supported = getSupportedReasoningEfforts(id);
+  if (supported.length === 0) return undefined;
+  if (effort && supported.includes(effort)) return effort;
+  return undefined;
 }
