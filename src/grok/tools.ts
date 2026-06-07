@@ -35,7 +35,7 @@ import {
   VIDEO_RESOLUTIONS,
 } from "./media";
 
-const RESPONSES_SEARCH_MODEL = "gpt-4o-mini";
+const RESPONSES_SEARCH_MODEL = process.env.GROK_MODEL || "grok-4.3";
 
 interface CreateToolsOptions {
   runTask?: (request: TaskRequest, abortSignal?: AbortSignal) => Promise<ToolResult>;

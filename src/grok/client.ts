@@ -17,7 +17,7 @@ export interface ResolvedModelRuntime {
 export function createProvider(apiKey: string, baseURL?: string): XaiProvider {
   return createXai({
     apiKey,
-    baseURL: baseURL || process.env.AI_BASE_URL || "https://api.openai.com/v1",
+    baseURL: baseURL || process.env.AI_BASE_URL || process.env.GROK_BASE_URL || "https://api.x.ai/v1",
   });
 }
 

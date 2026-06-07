@@ -112,9 +112,21 @@ export function getBaseURL(): string {
 
 export function getSolanaConfig(): SolanaConfig {
   return {
-    rpcUrl: process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
+    rpcUrl:
+      process.env.SOLANA_TRACKER_RPC_URL ||
+      process.env.SOLANA_RPC_URL ||
+      "https://api.mainnet-beta.solana.com",
     apiUrl: process.env.PHOENIX_API_URL || "https://perp-api.phoenix.trade",
     apiKey: process.env.PHOENIX_API_KEY,
+  };
+}
+
+export function getSolanaTrackerConfig() {
+  return {
+    apiKey: process.env.SOLANA_TRACKER_API_KEY,
+    rpcUrl: process.env.SOLANA_TRACKER_RPC_URL,
+    wssUrl: process.env.SOLANA_TRACKER_WSS_URL,
+    dataUrl: process.env.SOLANA_TRACKER_URL || "https://data.solanatracker.io",
   };
 }
 
