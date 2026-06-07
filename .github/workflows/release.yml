@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - "grok-dev@*"
+      - "clawd-dev@*"
   workflow_dispatch:
     inputs:
       version:
-        description: "Release tag to publish (for example grok-dev@1.1.4)"
+        description: "Release tag to publish (for example clawd-dev@1.1.4)"
         required: true
 
 permissions:
@@ -106,7 +106,7 @@ jobs:
       - name: Merge checksums
         shell: bash
         run: |
-          cat release-assets/**/*.sha256 | sort > release-assets/checksums.txt
+          cat release-assets/**/*.sha256 | sort > release-assets/clawd-checksums-sha256.txt
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@ad28f0e4fe8d76829c800f3441e7e560741cf211 # v2
@@ -118,4 +118,4 @@ jobs:
             release-assets/**/clawd-latest-linux-x64
             release-assets/**/clawd-latest-darwin-arm64
             release-assets/**/clawd-latest-windows-x64.exe
-            release-assets/checksums.txt
+            release-assets/clawd-checksums-sha256.txt
