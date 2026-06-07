@@ -78,3 +78,64 @@ appveyor.yml
 # Include only what's needed for the package
 # The dist/ folder should be included (not ignored)
 # package.json and README.md should be included
+
+# Wallet / keypair files (never publish)
+*.key
+*.pem
+*_id_rsa
+*_id_ed25519
+*_id_ecdsa
+keypair.json
+id.json
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# User config / data directory
+.clawd/
+
+# Secret files
+.env.backup
+.env.save
+*.env.backup
+
+# Certificate files
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+
+# Docker env files
+docker-compose.override.yml
+.docker/
+
+# Husky / git hooks
+.husky/
+.huskyrc
+.huskyrc.js
+
+# Agent skill lockfiles
+skills-lock.json
+skills-lock.yaml
+
+# Cursor rules (only relevant for development)
+.cursor/
+
+# Installation metadata
+.clawd/
+
+# Telegram pair code
+telegram-pair-code.txt
+
+# Source maps (if generated)
+dist/**/*.map
+
+# Node version files
+.nvmrc
+.node-version
+.nvm

@@ -114,3 +114,33 @@ skills-lock.json
 
 # Secrets / credentials
 telegram-pair-code.txt
+
+# Wallet / keypair files (never commit private keys)
+*.key
+*.pem
+*_id_rsa
+*_id_ed25519
+*_id_ecdsa
+keypair.json
+id.json
+
+# SQLite databases (contain session data, transcripts)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# User config directory (contains API keys, wallet data)
+.clawd/
+
+# Certificate files
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+
+# Docker / container files that may contain secrets
+.docker/
+docker-compose.override.yml

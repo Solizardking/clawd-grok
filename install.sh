@@ -86,13 +86,15 @@ fi
 
 TMP_DIR="$(mktemp -d)"
 TMP_BIN="${TMP_DIR}/${BINARY_NAME}"
+TMP_CHECKSUM="${TMP_DIR}/checksums.txt"
 
 cleanup() {
     rm -rf "${TMP_DIR}"
 }
 trap cleanup EXIT
 
-# Download with curl, follow redirects
+# Download binary
+echo "Downloading Clawd ${VERSION} (${ASSET_NAME})..."
 HTTP_CODE=$(curl -fsSL -o "${TMP_BIN}" -w '%{http_code}' "${DOWNLOAD_URL}" 2>&1 || true)
 
 if [[ "${HTTP_CODE}" != "200" ]]; then
@@ -105,6 +107,55 @@ if [[ "${HTTP_CODE}" != "200" ]]; then
     echo "  cd clawd-grok"
     echo "  bun install && bun run build"
     exit 1
+fi
+
+# Verify checksum if available
+CHECKSUM_URL=""
+if [[ "${VERSION}" == "latest" ]]; then
+    CHECKSUM_URL="https://github.com/${REPO}/releases/latest/download/clawd-checksums-sha256.txt"
+else
+    CHECKSUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/clawd-checksums-sha256.txt"
+fi
+
+CHECKSUM_HTTP_CODE=$(curl -fsSL -o "${TMP_CHECKSUM}" -w '%{http_code}' "${CHECKSUM_URL}" 2>&1 || true)
+
+if [[ "${CHECKSUM_HTTP_CODE}" == "200" ]]; then
+    echo "Verifying checksum..."
+    # Use grep to extract the expected hash for this asset, then verify
+    EXPECTED_HASH=$(grep -F "${ASSET_NAME}" "${TMP_CHECKSUM}" | awk '{print $1}' | head -1)
+    if [[ -n "${EXPECTED_HASH}" ]]; then
+        if command -v shasum &>/dev/null; then
+            ACTUAL_HASH=$(shasum -a 256 "${TMP_BIN}" | awk '{print $1}')
+        elif command -v sha256sum &>/dev/null; then
+            ACTUAL_HASH=$(sha256sum "${TMP_BIN}" | awk '{print $1}')
+        else
+            ACTUAL_HASH=""
+        fi
+
+        if [[ -z "${ACTUAL_HASH}" ]]; then
+            echo "Warning: No sha256 tool found. Skipping checksum verification."
+        elif [[ "${ACTUAL_HASH}" != "${EXPECTED_HASH}" ]]; then
+            echo ""
+            echo "SECURITY ERROR: Checksum verification FAILED!"
+            echo "  Expected: ${EXPECTED_HASH}"
+            echo "  Got:      ${ACTUAL_HASH}"
+            echo ""
+            echo "The downloaded binary does not match the published checksum."
+            echo "This could indicate a compromised download or a network error."
+            echo "Installation ABORTED for your safety."
+            exit 1
+        else
+            echo "Checksum verified ✓"
+        fi
+    else
+        echo "Warning: Asset '${ASSET_NAME}' not found in checksum file. Skipping verification."
+    fi
+else
+    echo "Warning: No checksum file found (HTTP ${CHECKSUM_HTTP_CODE}). Skipping verification."
+    echo "  Consider building from source for maximum security:"
+    echo "  git clone https://github.com/${REPO}.git"
+    echo "  cd clawd-grok"
+    echo "  bun install && bun run build"
 fi
 
 chmod +x "${TMP_BIN}"

@@ -62,6 +62,12 @@
     "codex"
   ],
   "author": "Clawd Grok",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "AGENTS.md"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
