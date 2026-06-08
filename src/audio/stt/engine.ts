@@ -1,6 +1,6 @@
 import type { TelegramSettings } from "../../utils/settings";
 import { getApiKey, getBaseURL, resolveTelegramAudioInputSettings } from "../../utils/settings";
-import { ClawdSttEngine, type ClawdSttTranscriptionResult } from "./clawd-stt";
+import { ClawdSttEngine, type ClawdSttTranscriptionResult } from "./grok-stt.js";
 
 export interface AudioTranscriptionInput {
   audioPath: string;
