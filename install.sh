@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP="clawd"
-REPO="clawd-grok/clawd-grok"
+REPO="Solizardking/clawd-grok"
 USER_DIR="${HOME}/.clawd"
 INSTALL_DIR="${CLAWD_INSTALL_DIR:-${HOME}/.local/bin}"
 INSTALL_METADATA="${USER_DIR}/install-metadata.json"
@@ -13,11 +13,11 @@ function print_help() {
     echo ""
     echo "Install Clawd from GitHub Releases."
     echo ""
-    echo "  curl -fsSL https://raw.githubusercontent.com/clawd-grok/clawd-grok/main/install.sh | bash"
+    echo "  curl -fsSL https://raw.githubusercontent.com/Solizardking/clawd-grok/newnew/install.sh | bash"
     echo ""
     echo "Install a specific version:"
     echo ""
-    echo "  curl -fsSL https://raw.githubusercontent.com/clawd-grok/clawd-grok/main/install.sh | bash -s v1.0.0"
+    echo "  curl -fsSL https://raw.githubusercontent.com/Solizardking/clawd-grok/newnew/install.sh | bash -s v1.0.0"
     echo ""
     echo "Environment variables:"
     echo "  CLAWD_INSTALL_DIR    Install directory (default: ${HOME}/.local/bin)"
