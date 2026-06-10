@@ -137,13 +137,21 @@ export type SandboxMode = "shuru" | "off";
 let sandboxOverride: { mode: SandboxMode; settings: SandboxSettings } | null = null;
 
 export interface SandboxSettings {
+  [key: string]: unknown;
   allowNet?: boolean;
   allowedHosts?: string[];
+  allowEphemeralInstall?: boolean;
+  hostBrowserCommandsOnHost?: boolean;
   ports?: string[];
   cpus?: number;
   memory?: string;
   diskSize?: string;
   checkpoint?: string;
+  from?: string;
+  verifyBaseFrom?: string;
+  guestWorkdir?: string;
+  syncHostWorkspace?: boolean;
+  shellInit?: string[];
   secrets?: Record<string, string>;
 }
 
@@ -221,9 +229,163 @@ export function getTelegramBotToken(): string | undefined {
 
 // === Clear caches (useful for testing) ===
 
+// === LSP Settings ===
+
+export interface LspSettings {
+  enabled: boolean;
+  tsserver?: { enabled: boolean; watch: boolean };
+  eslint?: { enabled: boolean };
+  maxDiagnosticsPerFile?: number;
+}
+
+export function getCurrentLspSettings(): LspSettings {
+  const userSettings = loadUserSettings();
+  const configured = (userSettings as Record<string, unknown>).lsp as LspSettings | undefined;
+  return configured || { enabled: false };
+}
+
+// === Current Model ===
+
+export function getCurrentModel(): string {
+  const userSettings = loadUserSettings();
+  return (userSettings as Record<string, unknown>).defaultModel as string
+    || process.env.AI_MODEL
+    || process.env.GROK_MODEL
+    || "grok-4.3";
+}
+
+export function getModeSpecificModel(mode: string): string {
+  const model = getCurrentModel();
+  // Return the current model — mode-specific overrides can be added later
+  return model;
+}
+
+// === MCP Servers ===
+
+export function loadMcpServers(): Record<string, any>[] {
+  const userSettings = loadUserSettings();
+  const servers = userSettings.mcpServers;
+  if (!servers) return [];
+  return Object.entries(servers).map(([name, config]) => ({ name, ...config }));
+}
+
+// === Recaps ===
+
+export function loadRecapsEnabled(): boolean {
+  const userSettings = loadUserSettings();
+  return (userSettings as Record<string, unknown>).recapsEnabled as boolean ?? true;
+}
+
+// === Sub Agents ===
+
+export interface CustomSubagentConfig {
+  name: string;
+  model: string;
+  instruction: string;
+  enabled?: boolean;
+}
+
+export function loadValidSubAgents(): CustomSubagentConfig[] {
+  const userSettings = loadUserSettings();
+  return userSettings.subAgents?.filter(a => a.enabled !== false) ?? [];
+}
+
+// === Telegram Settings ===
+
+export interface TelegramSettings {
+  botToken?: string;
+  audioInput?: {
+    enabled: boolean;
+    language: string;
+  };
+  stream?: {
+    enabled: boolean;
+    previewTokens?: number;
+  };
+}
+
+export function resolveTelegramAudioInputSettings(telegramSettings?: TelegramSettings): { enabled: boolean; language: string } {
+  return {
+    enabled: telegramSettings?.audioInput?.enabled ?? false,
+    language: telegramSettings?.audioInput?.language ?? "en",
+  };
+}
+
+export function resolveTelegramStreamSettings(telegramSettings?: TelegramSettings): { enabled: boolean; previewTokens: number } {
+  return {
+    enabled: telegramSettings?.stream?.enabled ?? false,
+    previewTokens: telegramSettings?.stream?.previewTokens ?? 200,
+  };
+}
+
+// === Payment Chain ===
+
+export type PaymentChain = "base-sepolia" | "base" | "solana";
+
+// === MCP Remote Transport ===
+
+export type McpRemoteTransport = "http" | "sse";
+
+// === Sandbox normalization ===
+
+export function normalizeSandboxSettings(settings?: Record<string, unknown>): SandboxSettings {
+  if (!settings) return {};
+  return {
+    allowNet: settings.allowNet as boolean | undefined,
+    allowedHosts: settings.allowedHosts as string[] | undefined,
+    ports: settings.ports as string[] | undefined,
+    cpus: settings.cpus as number | undefined,
+    memory: settings.memory as string | undefined,
+    diskSize: settings.diskSize as string | undefined,
+    checkpoint: settings.checkpoint as string | undefined,
+    secrets: settings.secrets as Record<string, string> | undefined,
+  };
+}
+
+// === Clear caches (useful for testing) ===
+
 export function clearSettingsCache(): void {
   userSettingsCache = null;
   projectSettingsCache = new Map();
   paymentSettingsCache = null;
   sandboxOverride = null;
+}
+
+// === Re-export McpServerConfig from types ===
+export type McpServerConfig = import("../types/index.js").McpServerConfig;
+
+// === Save helpers ===
+
+export function saveMcpServers(servers: Record<string, any>[]): void {
+  const userSettings = loadUserSettings();
+  const mcpMap: Record<string, any> = {};
+  for (const s of servers) {
+    mcpMap[s.name] = { command: s.command, args: s.args, env: s.env };
+  }
+  saveUserSettings({ mcpServers: mcpMap });
+}
+
+export function saveRecapsEnabled(enabled: boolean): void {
+  const userSettings = loadUserSettings();
+  (userSettings as Record<string, unknown>).recapsEnabled = enabled;
+  saveUserSettings(userSettings);
+}
+
+export function saveApprovedTelegramUserId(userId: string): void {
+  const userSettings = loadUserSettings();
+  const telegram = userSettings.telegram || {};
+  const approved = telegram.approvedUserIds || [];
+  if (!approved.includes(userId)) {
+    approved.push(userId);
+  }
+  saveUserSettings({ telegram: { ...telegram, approvedUserIds: approved } });
+}
+
+export function isReservedSubagentName(name: string): boolean {
+  const reserved = ["verify", "test", "system"];
+  return reserved.includes(name);
+}
+
+export function getReasoningEffortForModel(): string | undefined {
+  return undefined;
 }

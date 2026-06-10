@@ -11,6 +11,7 @@ const WALLET_DIR = path.join(os.homedir(), ".clawd");
 const WALLET_PATH = path.join(WALLET_DIR, "wallet.json");
 
 const USDC_BY_CHAIN: Record<PaymentChain, `0x${string}`> = {
+  solana: "0x0",
   base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   "base-sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };

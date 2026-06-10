@@ -127,6 +127,10 @@ export function listModelIds(): string[] {
   return MODELS.map((m) => m.id);
 }
 
+export function getModelIds(): string[] {
+  return MODELS.map((m) => m.id);
+}
+
 export function getSupportedReasoningEfforts(id: string): string[] {
   const info = getModel(id);
   return info?.reasoningEfforts ?? [];

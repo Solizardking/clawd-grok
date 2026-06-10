@@ -27,22 +27,35 @@ export function ensureWorkspace(cwd: string): WorkspaceInfo {
   const id = createHash("sha1").update(resolved.scopeKey).digest("hex").slice(0, 16);
   const db = getDatabase();
 
-  db.prepare(`
-    INSERT INTO workspaces (id, scope_key, canonical_path, git_root, display_name, last_seen_at)
-    VALUES (@id, @scope_key, @canonical_path, @git_root, @display_name, @last_seen_at)
-    ON CONFLICT(scope_key) DO UPDATE SET
-      canonical_path = excluded.canonical_path,
-      git_root = excluded.git_root,
-      display_name = excluded.display_name,
-      last_seen_at = excluded.last_seen_at
-  `).run({
-    id,
-    scope_key: resolved.scopeKey,
-    canonical_path: resolved.canonicalPath,
-    git_root: resolved.gitRoot,
-    display_name: resolved.displayName,
-    last_seen_at: now,
-  });
+  const existing = db.prepare("SELECT id, scope_key FROM workspaces WHERE scope_key = ?").get(resolved.scopeKey) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(`
+      UPDATE workspaces SET
+        canonical_path = @canonical_path,
+        git_root = @git_root,
+        display_name = @display_name,
+        last_seen_at = @last_seen_at
+      WHERE scope_key = @scope_key
+    `).run({
+      scope_key: resolved.scopeKey,
+      canonical_path: resolved.canonicalPath,
+      git_root: resolved.gitRoot,
+      display_name: resolved.displayName,
+      last_seen_at: now,
+    });
+  } else {
+    db.prepare(`
+      INSERT INTO workspaces (id, scope_key, canonical_path, git_root, display_name, last_seen_at)
+      VALUES (@id, @scope_key, @canonical_path, @git_root, @display_name, @last_seen_at)
+    `).run({
+      id,
+      scope_key: resolved.scopeKey,
+      canonical_path: resolved.canonicalPath,
+      git_root: resolved.gitRoot,
+      display_name: resolved.displayName,
+      last_seen_at: now,
+    });
+  }
 
   const row = db
     .prepare(`

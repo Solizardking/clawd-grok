@@ -8,10 +8,20 @@ export interface ToolResult {
   success: boolean;
   output?: string;
   error?: string;
+  diff?: string;
+  verifyRecipe?: VerifyRecipe;
+  task?: string;
+  media?: MediaAsset[];
+  computer?: ComputerToolMetadata;
+  plan?: Plan;
+  lspDiagnostics?: any;
+  delegation?: DelegationRun;
+  backgroundProcess?: any;
 }
 
 export interface ToolCall {
   id: string;
+  type?: string;
   function: {
     name: string;
     arguments: string;
@@ -19,11 +29,18 @@ export interface ToolCall {
 }
 
 export interface ChatEntry {
-  role: "system" | "user" | "assistant" | "tool";
+  role?: "system" | "user" | "assistant" | "tool";
+  type?: string;
   content: string;
+  timestamp?: Date;
+  remoteKey?: string;
+  modeColor?: string;
+  sourceLabel?: string;
   tool_call_id?: string;
   name?: string;
   tool_calls?: ToolCall[];
+  toolCall?: ToolCall;
+  toolResult?: ToolResult;
 }
 
 // === Stream Types ===
@@ -44,12 +61,17 @@ export interface StreamToolResult {
   type: "tool_result";
   id: string;
   name: string;
+  arguments?: string;
   result: ToolResult;
+  toolCall?: ToolCall;
+  toolResult?: ToolResult;
 }
 
 export interface StreamError {
   type: "error";
   message: string;
+  content?: string;
+  isAuthError?: boolean;
 }
 
 export interface StreamDone {
@@ -61,7 +83,7 @@ export interface StreamDone {
   };
 }
 
-export type StreamChunk = StreamToken | StreamToolCall | StreamToolResult | StreamError | StreamDone;
+export type StreamChunk = StreamToken | StreamToolCall | StreamToolResult | StreamError | StreamDone | { type: "content"; content: string } | { type: "tool_calls"; toolCalls: ToolCall[] } | { type: "reasoning"; text: string };
 
 // === Solana Types ===
 
@@ -289,6 +311,13 @@ export interface ClawdSettings {
       enabled: boolean;
       language: string;
     };
+    sessionsByUserId?: Record<string, string>;
+    approvedUserIds?: string[];
+    stream?: {
+      enabled: boolean;
+      previewTokens: number;
+    };
+    typingIndicator?: boolean;
   };
   mcpServers?: Record<string, McpServerConfig>;
 }
@@ -297,6 +326,7 @@ export interface SubAgentConfig {
   name: string;
   model: string;
   instruction: string;
+  enabled?: boolean;
 }
 
 export interface HookConfig {
@@ -330,4 +360,249 @@ export interface McpServerConfig {
   command: string;
   args?: string[];
   env?: Record<string, string>;
+}
+
+// === Agent / App Types ===
+
+export type AgentMode = "agent" | "plan" | "ask";
+
+export const MODES: readonly AgentMode[] = ["agent", "plan"] as const;
+
+export interface PlanStep {
+  description: string;
+  title?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  filePaths?: string[];
+}
+
+export interface PlanQuestion {
+  id: string;
+  question?: string;
+  type: "confirm" | "single" | "multiselect" | "text";
+  label: string;
+  options?: Array<{ id: string; label: string; value: string }>;
+  default?: string | string[];
+  required?: boolean;
+}
+
+export interface Plan {
+  title: string;
+  summary: string;
+  steps: PlanStep[];
+  questions?: PlanQuestion[];
+}
+
+export interface SessionInfo {
+  id: string;
+  label: string | null;
+  mode: AgentMode;
+  model: string;
+  startedAt: string;
+  messageCount: number;
+  tokenCount: number;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  title?: string;
+  recap?: string;
+}
+
+export interface SessionSnapshot {
+  id: string;
+  label: string | null;
+  mode: AgentMode;
+  model: string;
+  messageCount: number;
+  tokenCount: number;
+  workspace?: string;
+  session?: string;
+}
+
+export interface SessionRecap {
+  label: string;
+  summary: string;
+  id: string;
+  createdAt: string;
+  updatedAt?: string;
+  text?: string;
+  model?: string;
+}
+
+export type SessionStatus = "active" | "archived" | "compacted";
+
+export interface SubagentStatus {
+  name: string;
+  agent?: string;
+  status: "pending" | "running" | "completed" | "error" | "cancelled";
+  progress?: string;
+  error?: string;
+  result?: string;
+  detail?: string;
+}
+
+export interface TaskRequest {
+  task?: string;
+  agent?: string;
+  description?: string;
+  prompt?: string;
+  model?: string;
+  mode?: AgentMode;
+  cwd?: string;
+  sandbox?: Record<string, unknown>;
+}
+
+export type UsageSource = "agent" | "subagent" | "compaction" | "recap" | "side-question" | "title" | "other" | "task" | "message";
+
+export interface FileDiff {
+  path: string;
+  diff: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  description: string;
+  contextWindow: number;
+  reasoning?: boolean;
+  supportsClientTools?: boolean;
+}
+
+export type ReasoningEffort = "low" | "medium" | "high";
+
+export interface UsageEvent {
+  id: string;
+  source: UsageSource;
+  subagentName?: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  durationMs: number;
+  provider: string;
+  timestamp: string;
+  sessionId: string;
+}
+
+export interface WorkspaceInfo {
+  id: string;
+  path: string;
+  gitRemote?: string;
+  gitBranch?: string;
+  label?: string;
+  lastAccessedAt: string;
+  sessionCount: number;
+  totalTokens: number;
+}
+
+// === Verify Types ===
+
+export interface VerifyRecipe {
+  ecosystem: string;
+  appKind: string;
+  appLabel: string;
+  shellInitCommands: string[];
+  shellInit?: string[];
+  bootstrapCommands: string[];
+  bootstrap?: string[];
+  installCommands: string[];
+  install?: string[];
+  buildCommands: string[];
+  build?: string[];
+  testCommands: string[];
+  test?: string[];
+  startCommand?: string;
+  start?: string;
+  startPort?: string;
+  smokeKind: "http" | "cli" | "none";
+  smokeTarget?: string;
+  evidence: string[];
+  notes: string[];
+}
+
+export interface VerifyArtifact {
+  kind: string;
+  path: string;
+  description?: string;
+  content?: string;
+  checksum?: string;
+}
+
+export interface VerifyEnvironmentManifest {
+  recipe?: VerifyRecipe;
+  ecosystem?: string;
+  appKind?: string;
+  appLabel?: string;
+  shellInitCommands?: string[];
+  shellInit?: string[];
+  bootstrapCommands?: string[];
+  bootstrap?: string[];
+  installCommands?: string[];
+  install?: string[];
+  buildCommands?: string[];
+  build?: string[];
+  testCommands?: string[];
+  test?: string[];
+  startCommand?: string;
+  start?: string;
+  startPort?: string;
+  smokeKind?: string;
+  smokeTarget?: string;
+  evidence?: string[];
+  notes?: string[];
+  sandbox?: Record<string, unknown>;
+  env?: Record<string, string>;
+  files?: Record<string, string>;
+}
+
+export interface VerifyRetryStrategy {
+  id: string;
+  when: string;
+  reason: string;
+  commands: string[];
+  maxRetries?: number;
+  delayMs?: number;
+  backoffMultiplier?: number;
+}
+
+// === Misc Types ===
+
+export interface ComputerToolMetadata {
+  action?: string;
+  app?: string;
+  ref?: string;
+  resolution?: string;
+  screenshot?: boolean;
+  window?: string;
+  screenshotPath?: string;
+}
+
+export interface MediaAsset {
+  url: string;
+  path?: string;
+  sourceUrl?: string;
+  sourcePath?: string;
+  kind?: string;
+  mediaType?: string;
+  type: "image" | "video" | "audio" | "other";
+  mimeType?: string;
+}
+
+export interface DelegationRun {
+  id: string;
+  task: string;
+  status: DelegationStatus;
+  result?: string;
+  error?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
+export type DelegationStatus = "pending" | "running" | "completed" | "error" | "cancelled";
+
+export interface PaymentPrecheck {
+  required: boolean;
+  amount?: number;
+  currency?: string;
+  chain?: string;
+  reason?: string;
 }

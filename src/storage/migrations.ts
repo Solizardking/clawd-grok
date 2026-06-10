@@ -3,20 +3,29 @@ import type { SQLiteDatabase } from "./db";
 const LATEST_DB_VERSION = 3;
 
 export function applyMigrations(db: SQLiteDatabase): void {
-  const version = Number(db.pragma("user_version", { simple: true })) || 0;
+  runMigrations(db);
+}
+
+export function runMigrations(db: SQLiteDatabase): void {
+  applyMigrationsInternal(db);
+}
+
+function applyMigrationsInternal(db: SQLiteDatabase): void {
+  const pragmaResult = db.query("PRAGMA user_version").get() as { user_version: number } | undefined;
+  const version = pragmaResult?.user_version ?? 0;
 
   const migrate = db.transaction(() => {
     if (version < 1) {
       createInitialSchema(db);
-      db.pragma("user_version = 1");
+      db.exec("PRAGMA user_version = 1");
     }
     if (version < 2) {
       createCompactionSchema(db);
-      db.pragma("user_version = 2");
+      db.exec("PRAGMA user_version = 2");
     }
     if (version < LATEST_DB_VERSION) {
       createSessionRecapSchema(db);
-      db.pragma(`user_version = ${LATEST_DB_VERSION}`);
+      db.exec(`PRAGMA user_version = ${LATEST_DB_VERSION}`);
     }
 
     ensureLatestSchema(db);

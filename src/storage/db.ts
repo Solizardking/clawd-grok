@@ -41,3 +41,8 @@ export function closeDatabase(): void {
     db = null;
   }
 }
+
+export function withTransaction<T>(fn: (database: Database) => T): T {
+  const database = getDatabase();
+  return database.transaction(fn)(database) as T;
+}
