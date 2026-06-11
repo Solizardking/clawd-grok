@@ -291,7 +291,7 @@ async function spawnProcess(launch: LspLaunchSpec, cwd: string): Promise<ChildPr
 
 function normalizeDiagnostic(input: Diagnostic): LspDiagnostic {
   return {
-    message: typeof input.message === "string" ? input.message : (input.message as { value: string }).value,
+    message: typeof input.message === "string" ? input.message : String(input.message),
     severity: input.severity,
     source: input.source,
     code: input.code !== undefined ? String(input.code) : undefined,
