@@ -99,7 +99,7 @@ jobs:
           echo "RELEASE_TAG=${tag}" >> "$GITHUB_ENV"
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317 # v4
         with:
           path: release-assets
 
@@ -109,7 +109,7 @@ jobs:
           cat release-assets/**/*.sha256 | sort > release-assets/clawd-checksums-sha256.txt
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@ad28f0e4fe8d76829c800f3441e7e560741cf211 # v2
+        uses: softprops/action-gh-release@9ed3cf9a6863b31f005d951c8d19de20628cf4eb # v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           generate_release_notes: true
