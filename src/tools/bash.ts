@@ -501,11 +501,11 @@ export function shouldRunOnHostInSandboxMode(command: string, settings: SandboxS
 
 export function wrapHostBrowserCommand(command: string): string {
   const normalized = command
-    .replace(/\bbunx\s+agent-browser\b/g, "__clawd_ab")
-    .replace(/\bnpx(?:\s+-y)?\s+agent-browser\b/g, "__clawd_ab")
-    .replace(/\bagent-browser\b/g, "__clawd_ab");
+    .replace(/\bbunx\s+agent-browser\b/g, "__grok_ab")
+    .replace(/\bnpx(?:\s+-y)?\s+agent-browser\b/g, "__grok_ab")
+    .replace(/\bagent-browser\b/g, "__grok_ab");
   return [
-    "__clawd_ab() {",
+    "__grok_ab() {",
     "  if command -v agent-browser >/dev/null 2>&1; then",
     '    command agent-browser "$@"',
     "  elif command -v bunx >/dev/null 2>&1; then",

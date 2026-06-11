@@ -1,5 +1,5 @@
 import type { ProcessMessageObserver, ProcessMessageStepFinish, ProcessMessageStepStart } from "../agent/agent";
-import type { StreamChunk, ToolCall, ToolResult } from "../types";
+import type { MediaAsset, StreamChunk, ToolCall, ToolResult } from "../types";
 
 export type HeadlessOutputFormat = "text" | "json";
 
@@ -83,7 +83,7 @@ export function renderHeadlessChunk(chunk: StreamChunk): HeadlessWrites {
     case "tool_calls":
       return chunk.toolCalls?.length
         ? {
-            stderr: chunk.toolCalls.map((tc) => `\x1b[33m▸ ${formatToolCallLabel(tc)}\x1b[0m\n`).join(""),
+            stderr: chunk.toolCalls.map((tc: ToolCall) => `\x1b[33m▸ ${formatToolCallLabel(tc)}\x1b[0m\n`).join(""),
           }
         : {};
 
@@ -96,7 +96,7 @@ export function renderHeadlessChunk(chunk: StreamChunk): HeadlessWrites {
       const color = chunk.toolResult.success ? "\x1b[32m" : "\x1b[31m";
       const label = chunk.toolCall ? formatToolCallLabel(chunk.toolCall) : "tool";
       const mediaLines =
-        chunk.toolResult.media?.map((asset) => {
+        chunk.toolResult.media?.map((asset: MediaAsset) => {
           const suffix = asset.url ? ` (${asset.url})` : "";
           return `  ${asset.path}${suffix}`;
         }) ?? [];

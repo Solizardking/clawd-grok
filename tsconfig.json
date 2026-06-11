@@ -15,8 +15,10 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@opentui/react",
     "moduleResolution": "Bundler",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/vendor.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

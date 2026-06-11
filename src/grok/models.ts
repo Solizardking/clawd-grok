@@ -13,6 +13,7 @@ export interface ModelDefinition {
   multiAgent?: boolean;
   responsesOnly?: boolean;
   supportsClientTools?: boolean;
+  supportsMaxOutputTokens?: boolean;
   reasoningEfforts?: string[];
   aliases?: string[];
 }
@@ -125,6 +126,10 @@ export function normalizeModelId(id: string): string {
 
 export function listModelIds(): string[] {
   return MODELS.map((m) => m.id);
+}
+
+export function getModelIds(): string[] {
+  return listModelIds();
 }
 
 export function getSupportedReasoningEfforts(id: string): string[] {

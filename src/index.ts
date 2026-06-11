@@ -23,11 +23,9 @@ import {
   getCurrentSandboxMode,
   getCurrentSandboxSettings,
   getSolanaConfig,
-  loadPaymentSettings,
   mergeSandboxSettings,
   type SandboxMode,
   type SandboxSettings,
-  savePaymentSettings,
   saveUserSettings,
 } from "./utils/settings";
 import { runUpdate } from "./utils/update-checker";
@@ -262,7 +260,7 @@ async function runBackgroundDelegation(jobPath: string, options: CliOptions) {
     const maxToolRounds =
       parseInt(stringOption(options.maxToolRounds) || String(delegation.maxToolRounds), 10) || delegation.maxToolRounds;
     const sandboxMode = resolveCliSandboxMode(options.sandbox) || delegation.sandboxMode || getCurrentSandboxMode();
-    const sandboxSettings = mergeSandboxSettings(getCurrentSandboxSettings(), delegation.sandboxSettings);
+    const sandboxSettings = mergeSandboxSettings(getCurrentSandboxSettings(), delegation.sandboxSettings ?? {});
     agent = new Agent(apiKey, baseURL, model, maxToolRounds, {
       persistSession: false,
       sandboxMode,
@@ -318,7 +316,8 @@ function resolveConfig(options: CliOptions) {
   const sandboxSettings = mergeSandboxSettings(getCurrentSandboxSettings(), cliOverrides);
 
   if (typeof options.apiKey === "string") saveUserSettings({ apiKey: options.apiKey } as Record<string, unknown>);
-  if (typeof options.model === "string") saveUserSettings({ defaultModel: normalizeModelId(options.model) } as Record<string, unknown>);
+  if (typeof options.model === "string")
+    saveUserSettings({ defaultModel: normalizeModelId(options.model) } as Record<string, unknown>);
 
   return { apiKey, baseURL, model, maxToolRounds, sandboxMode, sandboxSettings };
 }
@@ -342,7 +341,9 @@ function parseHeadlessOutputFormat(value: string): HeadlessOutputFormat {
 
 program
   .name("clawd")
-  .description("🦞 Clawd Grok — The world's first Grok-powered Solana perps CLI. Phoenix DEX perpetual futures, xAI Grok reasoning, strategy runners, paper trading. Grok the markets. Claw the profits.")
+  .description(
+    "🦞 Clawd Grok — The world's first Grok-powered Solana perps CLI. Phoenix DEX perpetual futures, xAI Grok reasoning, strategy runners, paper trading. Grok the markets. Claw the profits.",
+  )
   .version(packageJson.version)
   .argument("[message...]", "Initial message to send")
   .option("-k, --api-key <key>", "AI API key (OpenAI-compatible)")
@@ -479,10 +480,7 @@ program
   .action(() => {
     console.log("\nAvailable AI Models:\n");
     for (const m of MODELS) {
-      const tags = [
-        m.reasoning ? "reasoning" : "non-reasoning",
-        m.multiAgent ? "multi-agent" : null,
-      ].filter(Boolean);
+      const tags = [m.reasoning ? "reasoning" : "non-reasoning", m.multiAgent ? "multi-agent" : null].filter(Boolean);
       const suffix = tags.length > 0 ? ` (${tags.join(", ")})` : "";
       console.log(`  \x1b[36m${m.id}\x1b[0m — ${m.name}${suffix}`);
       console.log(
@@ -536,18 +534,24 @@ program
   .action(async (options) => {
     const solanaConfig = getSolanaConfig();
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: {
-          config: {
-            rpcUrl: solanaConfig.rpcUrl,
-            apiUrl: solanaConfig.apiUrl,
-            hasApiKey: !!solanaConfig.apiKey,
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: {
+              config: {
+                rpcUrl: solanaConfig.rpcUrl,
+                apiUrl: solanaConfig.apiUrl,
+                hasApiKey: !!solanaConfig.apiKey,
+              },
+              version: packageJson.version,
+              homeDir: `${process.env.HOME}/.clawd`,
+            },
           },
-          version: packageJson.version,
-          homeDir: `${process.env.HOME}/.clawd`,
-        },
-      }, null, 2));
+          null,
+          2,
+        ),
+      );
     } else {
       console.log("\nClawd Status:");
       console.log(`  Version:    ${packageJson.version}`);
@@ -584,12 +588,10 @@ walletCommand
   .option("--name <name>", "Wallet name")
   .option("--format <format>", "Key format: base58, bytes, or file", "base58")
   .argument("<key>", "Private key or file path")
-  .action(async (key, options) => {
-    const { WalletManager } = await import("./wallet/manager");
-    const wallet = new WalletManager();
+  .action(async (key: string, options) => {
     // Placeholder for import logic
     console.log(`Importing wallet "${options.name || "default"}"...`);
-    console.log("Wallet import — implement key parsing from", options.format);
+    console.log(`Wallet import — implement ${options.format} key parsing (${key.length} characters provided)`);
   });
 
 walletCommand
@@ -625,13 +627,19 @@ marketCommand
   .action(async (options) => {
     const solanaConfig = getSolanaConfig();
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: {
-          markets: ["SOL-PERP", "BTC-PERP", "ETH-PERP", "JUP-PERP", "BONK-PERP"],
-          apiUrl: solanaConfig.apiUrl,
-        },
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: {
+              markets: ["SOL-PERP", "BTC-PERP", "ETH-PERP", "JUP-PERP", "BONK-PERP"],
+              apiUrl: solanaConfig.apiUrl,
+            },
+          },
+          null,
+          2,
+        ),
+      );
     } else {
       console.log("\nPhoenix Perpetual Markets:");
       console.log("  SOL-PERP   Solana");
@@ -651,19 +659,25 @@ marketCommand
   .option("-o, --output <format>", "Output format: table or json", "table")
   .action(async (symbol, options) => {
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: {
-          symbol: symbol.toUpperCase(),
-          markPrice: 0,
-          indexPrice: 0,
-          volume24h: 0,
-          openInterest: 0,
-          fundingRate: 0,
-          fundingRateApr: 0,
-          note: "Connect to Phoenix API for live data",
-        },
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: {
+              symbol: symbol.toUpperCase(),
+              markPrice: 0,
+              indexPrice: 0,
+              volume24h: 0,
+              openInterest: 0,
+              fundingRate: 0,
+              fundingRateApr: 0,
+              note: "Connect to Phoenix API for live data",
+            },
+          },
+          null,
+          2,
+        ),
+      );
     } else {
       console.log(`\n${symbol.toUpperCase()} Ticker:`);
       console.log("  (Connect to Phoenix API for live market data)");
@@ -864,10 +878,16 @@ marginCommand
   .option("-o, --output <format>", "Output format: table or json", "table")
   .action(async (options) => {
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: { equity: 0, availableBalance: 0, marginUsed: 0, marginRatio: 0 },
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: { equity: 0, availableBalance: 0, marginUsed: 0, marginRatio: 0 },
+          },
+          null,
+          2,
+        ),
+      );
     } else {
       console.log("\nMargin Status:");
       console.log("  (Connect wallet + RPC to fetch margin data)");
@@ -892,10 +912,16 @@ program
   .option("-o, --output <format>", "Output format: table or json", "table")
   .action(async (options) => {
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: { margin: {}, positions: [], orders: [], timestamp: Date.now() },
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: { margin: {}, positions: [], orders: [], timestamp: Date.now() },
+          },
+          null,
+          2,
+        ),
+      );
     } else {
       console.log("\nPortfolio Snapshot:");
       console.log("  (Connect wallet + RPC for live portfolio data)");
@@ -970,12 +996,25 @@ taCommand
   .option("-o, --output <format>", "Output format: table or json", "table")
   .action(async (symbol, options) => {
     if (options.output === "json") {
-      console.log(JSON.stringify({
-        ok: true,
-        data: { indicator: options.indicator, symbol: symbol.toUpperCase(), timeframe: options.timeframe, value: 0 },
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            data: {
+              indicator: options.indicator,
+              symbol: symbol.toUpperCase(),
+              timeframe: options.timeframe,
+              value: 0,
+            },
+          },
+          null,
+          2,
+        ),
+      );
     } else {
-      console.log(`\n${symbol.toUpperCase()} ${options.indicator.toUpperCase()} (${options.timeframe}, period ${options.period}):`);
+      console.log(
+        `\n${symbol.toUpperCase()} ${options.indicator.toUpperCase()} (${options.timeframe}, period ${options.period}):`,
+      );
       console.log("  (Compute from live/paper candle data)");
       console.log();
     }
@@ -997,7 +1036,10 @@ taCommand
   .command("signal")
   .description("Evaluate a trigger spec against the latest indicator value")
   .argument("<symbol>", "Market symbol (e.g. SOL)")
-  .requiredOption("--spec <json>", 'Signal spec JSON, e.g. {"indicator":"rsi","timeframe":"1h","op":"lt","threshold":30}')
+  .requiredOption(
+    "--spec <json>",
+    'Signal spec JSON, e.g. {"indicator":"rsi","timeframe":"1h","op":"lt","threshold":30}',
+  )
   .action(async (symbol, options) => {
     console.log(`\n${symbol.toUpperCase()} Signal: ${options.spec}`);
     console.log("  (Evaluate against live indicator data)");
@@ -1006,7 +1048,9 @@ taCommand
 
 // ===== STRATEGY =====
 
-const strategyCommand = program.command("strategy").description("Automated strategy runners: TWAP, grid, and TA-driven");
+const strategyCommand = program
+  .command("strategy")
+  .description("Automated strategy runners: TWAP, grid, and TA-driven");
 
 strategyCommand
   .command("twap")
@@ -1024,7 +1068,9 @@ strategyCommand
   .option("--run-label <label>", "Human-readable label")
   .action(async (options) => {
     console.log(`\nTWAP Strategy: ${options.side} ${options.symbol.toUpperCase()}`);
-    console.log(`  Notional: ${options.notionalUsdc || "N/A"} USDC | Slices: ${options.slices} | Interval: ${options.intervalSeconds}s`);
+    console.log(
+      `  Notional: ${options.notionalUsdc || "N/A"} USDC | Slices: ${options.slices} | Interval: ${options.intervalSeconds}s`,
+    );
     console.log(`  Mode: ${options.mode}${options.detached ? " (detached)" : ""}`);
     console.log("  (Strategy runner — connect wallet + RPC for live execution)\n");
   });
@@ -1054,7 +1100,7 @@ strategyCommand
   .command("runs")
   .description("List persisted strategy runs")
   .option("--limit <n>", "Number of runs to show", "20")
-  .action(async (options) => {
+  .action(async () => {
     console.log("\nStrategy Runs:");
     console.log("  (No runs yet — start one with 'clawd strategy twap start' or 'clawd strategy grid start')");
     console.log();

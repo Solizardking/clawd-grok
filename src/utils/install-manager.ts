@@ -1,14 +1,14 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 import readline from "node:readline";
+import { getHomeDir } from "./settings";
 
-export const CLAWD_GITHUB_REPO = "clawd/clawd-cli";
+export const CLAWD_GITHUB_REPO = "superagent-ai/grok-cli";
 export const CLAWD_RELEASES_API = `https://api.github.com/repos/${CLAWD_GITHUB_REPO}/releases`;
 export const SCRIPT_INSTALL_METHOD = "script";
 const INSTALL_SCHEMA_VERSION = 1;
-const CONFIG_DIR = ".clawd";
-const PATH_MARKER = "# clawd";
+const CONFIG_DIR = ".grok";
 const CONFIG_FILENAMES = ["user-settings.json", "AGENTS.md", "config.toml"];
 const DATA_ENTRIES = ["daemon.pid", "delegations", "clawd.db", "models", "schedules", "solana"];
 
@@ -19,6 +19,8 @@ interface ReleaseTarget {
 }
 
 interface InstallMetadata {
+  schemaVersion?: number;
+  installMethod?: string;
   version: string;
   repo: string;
   binaryPath: string;
@@ -26,7 +28,9 @@ interface InstallMetadata {
   assetName: string;
   target: string;
   installedAt: string;
-  method: string;
+  method?: string;
+  shellConfigPath?: string;
+  pathCommand?: string;
 }
 
 interface ReleaseDownload {
@@ -46,15 +50,15 @@ interface UpdateResult {
   output: string;
 }
 
-export function getClawdUserDir(homeDir = os.homedir()): string {
+export function getClawdUserDir(homeDir = getHomeDir()): string {
   return path.join(homeDir, CONFIG_DIR);
 }
 
-export function getScriptInstallDir(homeDir = os.homedir()): string {
+export function getScriptInstallDir(homeDir = getHomeDir()): string {
   return path.join(getClawdUserDir(homeDir), "bin");
 }
 
-export function getInstallMetadataPath(homeDir = os.homedir()): string {
+export function getInstallMetadataPath(homeDir = getHomeDir()): string {
   return path.join(getClawdUserDir(homeDir), "install.json");
 }
 
@@ -63,11 +67,11 @@ export function getReleaseTargetForPlatform(
   arch: string = process.arch,
 ): ReleaseTarget | null {
   if (platform === "darwin" && (arch === "arm64" || arch === "x64"))
-    return { key: "darwin-arm64", assetName: "clawd-darwin-arm64", binaryName: "clawd" };
+    return { key: "darwin-arm64", assetName: "grok-darwin-arm64", binaryName: "grok" };
   if (platform === "linux" && arch === "x64")
-    return { key: "linux-x64", assetName: "clawd-linux-x64", binaryName: "clawd" };
+    return { key: "linux-x64", assetName: "grok-linux-x64", binaryName: "grok" };
   if (platform === "win32" && arch === "x64")
-    return { key: "windows-x64", assetName: "clawd-windows-x64.exe", binaryName: "clawd.exe" };
+    return { key: "windows-x64", assetName: "grok-windows-x64.exe", binaryName: "grok.exe" };
   return null;
 }
 
@@ -77,6 +81,8 @@ export function loadScriptInstallMetadata(homeDir = os.homedir()): InstallMetada
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     return {
+      schemaVersion: typeof parsed.schemaVersion === "number" ? parsed.schemaVersion : 1,
+      installMethod: typeof parsed.installMethod === "string" ? parsed.installMethod : SCRIPT_INSTALL_METHOD,
       version: typeof parsed.version === "string" ? parsed.version : "unknown",
       repo: typeof parsed.repo === "string" ? parsed.repo : CLAWD_GITHUB_REPO,
       binaryPath: parsed.binaryPath as string,
@@ -84,23 +90,37 @@ export function loadScriptInstallMetadata(homeDir = os.homedir()): InstallMetada
       assetName: parsed.assetName as string,
       target: parsed.target as string,
       installedAt: parsed.installedAt as string,
-      method: parsed.method || SCRIPT_INSTALL_METHOD,
+      shellConfigPath: typeof parsed.shellConfigPath === "string" ? parsed.shellConfigPath : undefined,
+      pathCommand: typeof parsed.pathCommand === "string" ? parsed.pathCommand : undefined,
     };
   } catch {
     return null;
   }
 }
 
-export function saveScriptInstallMetadata(meta: Omit<InstallMetadata, "method">): void {
-  fs.mkdirSync(getClawdUserDir(), { recursive: true });
+export function saveScriptInstallMetadata(
+  meta: Omit<InstallMetadata, "method"> & Record<string, unknown>,
+  homeDir = getHomeDir(),
+): void {
+  fs.mkdirSync(getClawdUserDir(homeDir), { recursive: true });
   fs.writeFileSync(
-    getInstallMetadataPath(),
-    JSON.stringify({ ...meta, method: SCRIPT_INSTALL_METHOD }, null, 2),
+    getInstallMetadataPath(homeDir),
+    JSON.stringify(
+      {
+        schemaVersion: typeof meta.schemaVersion === "number" ? meta.schemaVersion : INSTALL_SCHEMA_VERSION,
+        installMethod: meta.installMethod || SCRIPT_INSTALL_METHOD,
+        ...meta,
+        method: SCRIPT_INSTALL_METHOD,
+      },
+      null,
+      2,
+    ),
     "utf-8",
   );
 }
 
 interface ScriptInstallContext {
+  metadata: InstallMetadata;
   currentVersion: string;
   target: ReleaseTarget;
   binaryPath: string;
@@ -115,11 +135,21 @@ export function getScriptInstallContext(homeDir = os.homedir()): ScriptInstallCo
   if (!currentTarget) return null;
 
   return {
+    metadata: meta,
     currentVersion: meta.version,
     target: currentTarget,
     binaryPath: meta.binaryPath,
     installDir: meta.installDir,
   };
+}
+
+export function parseChecksumsFile(text: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const match = line.trim().match(/^([a-f0-9]+)\s+.+\*?(grok-.+)$/i);
+    if (match) map.set(match[2], match[1]);
+  }
+  return map;
 }
 
 async function fetchReleaseJson(url: string): Promise<Record<string, unknown> | null> {
@@ -167,10 +197,7 @@ export async function fetchChecksums(url: string): Promise<Map<string, string>> 
     const resp = await fetch(url);
     if (!resp.ok) return map;
     const text = await resp.text();
-    for (const line of text.split("\n")) {
-      const match = line.trim().match(/^([a-f0-9]+)\s+.+\*?(clawd-.+)$/i);
-      if (match) map.set(match[2], match[1]);
-    }
+    return parseChecksumsFile(text);
   } catch {
     // Best effort
   }
@@ -213,7 +240,11 @@ export async function runScriptManagedUpdate(currentVersion: string): Promise<Up
 
     const oldPath = ctx.binaryPath;
     if (oldPath && oldPath !== dest && fs.existsSync(oldPath)) {
-      try { fs.unlinkSync(oldPath); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(oldPath);
+      } catch {
+        /* ignore */
+      }
     }
 
     saveScriptInstallMetadata({
@@ -231,7 +262,11 @@ export async function runScriptManagedUpdate(currentVersion: string): Promise<Up
     const msg = error instanceof Error ? error.message : String(error);
     return { success: false, output: `Update failed: ${msg}` };
   } finally {
-    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
 

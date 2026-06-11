@@ -1,17 +1,30 @@
 import { createXai, type XaiProvider } from "@ai-sdk/xai";
-import { generateText, type CoreMessage, type ModelMessage } from "ai";
-import { getModelInfo, type ModelDefinition } from "./models";
+import { generateText } from "ai";
+import { getReasoningEffortForModel } from "../utils/settings";
+import { getEffectiveReasoningEffort, getModelInfo, type ModelDefinition, normalizeModelId } from "./models";
 
 export type { XaiProvider };
 
-const DEFAULT_TITLE_MODEL = "gpt-4o-mini";
-const DEFAULT_RECAP_MODEL = "gpt-4o-mini";
+const DEFAULT_TITLE_MODEL = "grok-4.20-non-reasoning";
+const DEFAULT_RECAP_MODEL = "grok-4.20-non-reasoning";
+const RETIRED_MODEL_MAP: Record<string, string> = {
+  "grok-4-0709": "grok-4.3",
+  "grok-code-fast-1": "grok-4.3",
+  "grok-4-1-fast-reasoning": "grok-4.3",
+  "grok-3": "grok-4.20-non-reasoning",
+};
+
+type ProviderReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export interface ResolvedModelRuntime {
   model: ReturnType<XaiProvider["chat"]> | ReturnType<XaiProvider["responses"]>;
   modelId: string;
   modelInfo: ModelDefinition | undefined;
-  providerOptions?: Record<string, unknown>;
+  providerOptions?: {
+    xai?: {
+      reasoningEffort?: ProviderReasoningEffort;
+    };
+  };
 }
 
 export function createProvider(apiKey: string, baseURL?: string): XaiProvider {
@@ -22,14 +35,26 @@ export function createProvider(apiKey: string, baseURL?: string): XaiProvider {
 }
 
 export function resolveModelRuntime(provider: XaiProvider, modelId: string): ResolvedModelRuntime {
-  const info = getModelInfo(modelId);
-  const chatModel = provider.chat(modelId);
+  const normalizedModelId = RETIRED_MODEL_MAP[modelId] ?? normalizeModelId(modelId);
+  const info = getModelInfo(normalizedModelId);
+  const chatModel = provider.chat(normalizedModelId);
+  const normalizedFromAlias = normalizedModelId !== modelId;
+  const configuredEffort = getReasoningEffortForModel(normalizedModelId);
+  const reasoningEffort = normalizedFromAlias
+    ? undefined
+    : (getEffectiveReasoningEffort(normalizedModelId, configuredEffort) as ProviderReasoningEffort | undefined);
 
   return {
     model: chatModel,
-    modelId,
+    modelId: normalizedModelId,
     modelInfo: info,
-    providerOptions: undefined,
+    providerOptions: reasoningEffort
+      ? {
+          xai: {
+            reasoningEffort,
+          },
+        }
+      : undefined,
   };
 }
 
@@ -55,11 +80,17 @@ export async function generateTitle(
     return {
       title: result.text?.trim() || "New session",
       modelId,
-      usage: result.usage ? {
-        inputTokens: result.usage.promptTokens,
-        outputTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
-      } : undefined,
+      usage: result.usage
+        ? {
+            inputTokens:
+              (result.usage as { inputTokens?: number; promptTokens?: number }).inputTokens ??
+              (result.usage as { promptTokens?: number }).promptTokens,
+            outputTokens:
+              (result.usage as { outputTokens?: number; completionTokens?: number }).outputTokens ??
+              (result.usage as { completionTokens?: number }).completionTokens,
+            totalTokens: result.usage.totalTokens,
+          }
+        : undefined,
     };
   } catch {
     return { title: "New session", modelId };
@@ -81,22 +112,28 @@ export async function generateRecap(
   try {
     const result = await generateText({
       model: provider.chat(modelId),
-      system: "You generate concise session recaps. Summarize the conversation in 2-3 sentences.",
-      messages: [{ role: "user", content: prompt }],
-      maxOutputTokens: 200,
+      prompt,
+      maxOutputTokens: 120,
       abortSignal: signal,
+      system: "You generate concise session recaps. Maximum 3 sentences total. Return only the recap text.",
     });
 
     return {
-      recap: result.text?.trim() || undefined,
+      recap: result.text?.trim().replace(/^["']|["']$/g, "") || "",
       modelId,
-      usage: result.usage ? {
-        inputTokens: result.usage.promptTokens,
-        outputTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
-      } : undefined,
+      usage: result.usage
+        ? {
+            inputTokens:
+              (result.usage as { inputTokens?: number; promptTokens?: number }).inputTokens ??
+              (result.usage as { promptTokens?: number }).promptTokens,
+            outputTokens:
+              (result.usage as { outputTokens?: number; completionTokens?: number }).outputTokens ??
+              (result.usage as { completionTokens?: number }).completionTokens,
+            totalTokens: result.usage.totalTokens,
+          }
+        : undefined,
     };
   } catch {
-    return { modelId };
+    return { recap: "", modelId };
   }
 }

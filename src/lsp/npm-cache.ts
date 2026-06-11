@@ -3,7 +3,6 @@ import { access, mkdir, readdir, readFile, rm } from "fs/promises";
 import os from "os";
 import path from "path";
 
-const CACHE_ROOT = path.join(os.homedir(), ".clawd", "cache", "lsp");
 const locks = new Map<string, Promise<unknown>>();
 
 function packageDir(pkg: string): string {
@@ -11,7 +10,7 @@ function packageDir(pkg: string): string {
     process.platform === "win32"
       ? Array.from(pkg, (ch) => (/[<>:"|?*]/.test(ch) || ch.charCodeAt(0) < 32 ? "_" : ch)).join("")
       : pkg;
-  return path.join(CACHE_ROOT, sanitized);
+  return path.join(os.homedir(), ".grok", "cache", "lsp", sanitized);
 }
 
 export async function lspNpmWhich(pkg: string): Promise<string | null> {

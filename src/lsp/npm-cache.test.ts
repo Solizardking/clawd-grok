@@ -1,12 +1,20 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lspNpmWhich } from "./npm-cache";
 
 const tempDirs: string[] = [];
+let homeDir = "";
+
+beforeEach(async () => {
+  homeDir = await mkdtemp(path.join(os.tmpdir(), "grok-lsp-home-"));
+  tempDirs.push(homeDir);
+  vi.spyOn(os, "homedir").mockReturnValue(homeDir);
+});
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 

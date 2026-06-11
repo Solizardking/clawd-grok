@@ -1,6 +1,6 @@
 import type { TelegramSettings } from "../../utils/settings";
 import { getApiKey, getBaseURL, resolveTelegramAudioInputSettings } from "../../utils/settings";
-import { ClawdSttEngine, type ClawdSttTranscriptionResult } from "./clawd-stt";
+import { GrokSttEngine, type GrokSttTranscriptionResult } from "./grok-stt";
 
 export interface AudioTranscriptionInput {
   audioPath: string;
@@ -8,7 +8,7 @@ export interface AudioTranscriptionInput {
   mimeType?: string;
 }
 
-export type AudioTranscriptionResult = ClawdSttTranscriptionResult;
+export type AudioTranscriptionResult = GrokSttTranscriptionResult;
 
 export interface AudioTranscriptionEngine {
   transcribe(input: AudioTranscriptionInput): Promise<AudioTranscriptionResult>;
@@ -25,7 +25,7 @@ export function createTelegramAudioInputEngine(
     );
   }
 
-  return new ClawdSttEngine({
+  return new GrokSttEngine({
     apiKey,
     baseURL: getBaseURL(),
     language: resolved.language,

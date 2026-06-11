@@ -1,10 +1,9 @@
 import { spawn } from "child_process";
 import { createHash } from "crypto";
 import { promises as fs } from "fs";
-import os from "os";
 import path from "path";
 import type { DelegationRun, DelegationStatus, TaskRequest, ToolResult } from "../types/index";
-import type { SandboxMode, SandboxSettings } from "../utils/settings";
+import { getHomeDir, type SandboxMode, type SandboxSettings } from "../utils/settings";
 
 const ID_ADJECTIVES = ["brisk", "calm", "clever", "eager", "gentle", "keen", "lively", "nimble", "quiet", "steady"];
 
@@ -228,7 +227,7 @@ export async function failDelegation(jobPath: string, error: string, output = ""
 
 async function ensureDelegationsDir(cwd: string): Promise<string> {
   const projectId = getProjectId(cwd);
-  const dir = path.join(os.homedir(), ".clawd", "delegations", projectId);
+  const dir = path.join(getHomeDir(), ".grok", "delegations", projectId);
   await fs.mkdir(dir, { recursive: true });
   return dir;
 }

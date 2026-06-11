@@ -3,19 +3,19 @@ import path from "path";
 
 export const DEFAULT_STT_BASE_URL = "https://api.openai.com/v1";
 
-export interface ClawdSttEngineConfig {
+export interface GrokSttEngineConfig {
   apiKey: string;
   baseURL?: string;
   language?: string;
 }
 
-export interface ClawdSttTranscriptionInput {
+export interface GrokSttTranscriptionInput {
   audioPath: string;
   fileName?: string;
   mimeType?: string;
 }
 
-export interface ClawdSttWord {
+export interface GrokSttWord {
   text: string;
   start: number;
   end: number;
@@ -23,24 +23,22 @@ export interface ClawdSttWord {
   speaker?: number;
 }
 
-export interface ClawdSttTranscriptionResult {
+export interface GrokSttTranscriptionResult {
   text: string;
-  engine: "clawd-stt";
+  engine: "grok-stt";
   language: string;
   duration: number;
-  words?: ClawdSttWord[];
+  words?: GrokSttWord[];
 }
 
-export class ClawdSttEngine {
-  constructor(private readonly config: ClawdSttEngineConfig) {
+export class GrokSttEngine {
+  constructor(private readonly config: GrokSttEngineConfig) {
     if (!config.apiKey?.trim()) {
-      throw new Error(
-        "Clawd STT requires an API key. Set AI_API_KEY or configure aiKey in ~/.clawd/user-settings.json.",
-      );
+      throw new Error("API key required for STT.");
     }
   }
 
-  async transcribe(input: ClawdSttTranscriptionInput): Promise<ClawdSttTranscriptionResult> {
+  async transcribe(input: GrokSttTranscriptionInput): Promise<GrokSttTranscriptionResult> {
     const bytes = await readFile(input.audioPath);
     const fileName = input.fileName || path.basename(input.audioPath);
     const mimeType = input.mimeType || inferMimeTypeFromFileName(fileName);
@@ -57,33 +55,29 @@ export class ClawdSttEngine {
 
     const response = await fetch(`${baseURL}/stt`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.apiKey}`,
-      },
+      headers: { Authorization: `Bearer ${this.config.apiKey}` },
       body: form,
     });
 
     if (!response.ok) {
-      const body = await safeReadText(response);
-      const detail = body.trim() || response.statusText || `HTTP ${response.status}`;
-      throw new Error(`Clawd STT request failed (${response.status}): ${detail}`);
+      const body = await response.text().catch(() => "");
+      throw new Error(`Grok STT request failed (${response.status}): ${body || response.statusText}`);
     }
 
     const payload = (await response.json()) as {
       text?: string;
       language?: string;
       duration?: number;
-      words?: ClawdSttWord[];
+      words?: GrokSttWord[];
     };
-
     const text = typeof payload.text === "string" ? payload.text.trim() : "";
     if (!text) {
-      throw new Error("Clawd STT returned an empty transcript.");
+      throw new Error("Grok STT returned an empty transcript.");
     }
 
     return {
       text,
-      engine: "clawd-stt",
+      engine: "grok-stt",
       language: typeof payload.language === "string" ? payload.language : "",
       duration: typeof payload.duration === "number" ? payload.duration : 0,
       words: Array.isArray(payload.words) ? payload.words : undefined,
@@ -107,7 +101,6 @@ export function inferMimeTypeFromFileName(fileName: string): string {
     case ".aac":
       return "audio/aac";
     case ".m4a":
-      return "audio/mp4";
     case ".mp4":
       return "audio/mp4";
     case ".mkv":
@@ -118,14 +111,5 @@ export function inferMimeTypeFromFileName(fileName: string): string {
 }
 
 function normalizeBaseURL(baseURL?: string): string {
-  const value = baseURL?.trim() || DEFAULT_STT_BASE_URL;
-  return value.replace(/\/+$/, "");
-}
-
-async function safeReadText(response: Response): Promise<string> {
-  try {
-    return await response.text();
-  } catch {
-    return "";
-  }
+  return (baseURL?.trim() || DEFAULT_STT_BASE_URL).replace(/\/+$/, "");
 }
