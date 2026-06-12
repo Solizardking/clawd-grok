@@ -1,7 +1,7 @@
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 import type { SandboxMode } from "./settings";
+import { getHomeDir } from "./settings";
 
 interface WorkspaceTrustEntry {
   sandboxMode: SandboxMode;
@@ -38,8 +38,8 @@ function normalizeTrustEntry(value: unknown): WorkspaceTrustEntry | null {
   };
 }
 
-export function getWorkspaceTrustPath(homeDir = os.homedir()): string {
-  return path.join(homeDir, ".clawd", WORKSPACE_TRUST_FILENAME);
+export function getWorkspaceTrustPath(homeDir = getHomeDir()): string {
+  return path.join(homeDir, ".grok", WORKSPACE_TRUST_FILENAME);
 }
 
 export function getWorkspaceTrustKey(cwd = process.cwd()): string {

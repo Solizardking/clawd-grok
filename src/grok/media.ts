@@ -4,9 +4,9 @@ import { dirname, extname, isAbsolute, join, resolve } from "path";
 import type { MediaAsset, ToolResult } from "../types/index";
 import type { XaiProvider } from "./client";
 
-const GENERATED_MEDIA_DIR = ".clawd/generated-media";
-const IMAGE_MODEL_ID = "clawd-imagine-image";
-const VIDEO_MODEL_ID = "clawd-imagine-video";
+const GENERATED_MEDIA_DIR = ".grok/generated-media";
+const IMAGE_MODEL_ID = "grok-imagine-image";
+const VIDEO_MODEL_ID = "grok-imagine-video";
 
 export const IMAGE_ASPECT_RATIOS = [
   "1:1",

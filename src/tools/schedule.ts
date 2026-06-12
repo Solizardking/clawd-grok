@@ -4,8 +4,19 @@ import os from "os";
 import path from "path";
 import { getCurrentModel } from "../utils/settings";
 
-const SCHEDULES_DIR = path.join(os.homedir(), ".clawd", "schedules");
-const SCHEDULE_DAEMON_PID_PATH = path.join(os.homedir(), ".clawd", "daemon.pid");
+function getSchedulesDirPath(): string {
+  return path.join(getScheduleHomeBase(), ".grok", "schedules");
+}
+
+function getScheduleDaemonPidFilePath(): string {
+  return path.join(getScheduleHomeBase(), ".grok", "daemon.pid");
+}
+
+let scheduleHomeBaseOverride: string | null = null;
+
+function getScheduleHomeBase(): string {
+  return scheduleHomeBaseOverride ?? os.homedir();
+}
 
 export interface StoredSchedule {
   id: string;
@@ -148,7 +159,7 @@ export class ScheduleManager {
 
   async list(): Promise<StoredSchedule[]> {
     const files = await listScheduleFiles();
-    const items = await Promise.all(files.map((file) => readScheduleRecord(path.join(SCHEDULES_DIR, file))));
+    const items = await Promise.all(files.map((file) => readScheduleRecord(path.join(getSchedulesDirPath(), file))));
     return items
       .filter((item): item is StoredSchedule => item !== null)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -241,28 +252,34 @@ export class ScheduleManager {
 }
 
 export async function ensureSchedulesDir(): Promise<string> {
-  await fs.mkdir(SCHEDULES_DIR, { recursive: true });
-  return SCHEDULES_DIR;
+  const dir = getSchedulesDirPath();
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  } catch {
+    scheduleHomeBaseOverride ??= path.join(os.tmpdir(), "grok-home");
+    const fallbackDir = getSchedulesDirPath();
+    await fs.mkdir(fallbackDir, { recursive: true });
+    return fallbackDir;
+  }
 }
 
 export function getScheduleRecordPath(id: string): string {
-  const resolved = path.join(SCHEDULES_DIR, `${id}.json`);
+  const resolved = path.join(getSchedulesDirPath(), `${id}.json`);
   assertInsideSchedulesDir(resolved);
   return resolved;
 }
 
 export function getScheduleLogDir(id: string): string {
-  const resolved = path.join(SCHEDULES_DIR, id);
+  const resolved = path.join(getSchedulesDirPath(), id);
   assertInsideSchedulesDir(resolved);
   return resolved;
 }
 
 function assertInsideSchedulesDir(resolved: string): void {
+  const schedulesDir = path.resolve(getSchedulesDirPath());
   const normalized = path.resolve(resolved);
-  if (
-    !normalized.startsWith(`${path.resolve(SCHEDULES_DIR)}${path.sep}`) &&
-    normalized !== path.resolve(SCHEDULES_DIR)
-  ) {
+  if (!normalized.startsWith(`${schedulesDir}${path.sep}`) && normalized !== schedulesDir) {
     throw new Error("Invalid schedule id: path traversal detected.");
   }
 }
@@ -272,21 +289,22 @@ export function getScheduleRunLogPath(id: string): string {
 }
 
 export function getScheduleDaemonPidPath(): string {
-  return SCHEDULE_DAEMON_PID_PATH;
+  return getScheduleDaemonPidFilePath();
 }
 
 export async function writeScheduleDaemonPid(pid: number): Promise<void> {
-  await fs.mkdir(path.dirname(SCHEDULE_DAEMON_PID_PATH), { recursive: true });
-  await fs.writeFile(SCHEDULE_DAEMON_PID_PATH, `${pid}\n`, "utf8");
+  const pidPath = getScheduleDaemonPidFilePath();
+  await fs.mkdir(path.dirname(pidPath), { recursive: true });
+  await fs.writeFile(pidPath, `${pid}\n`, "utf8");
 }
 
 export async function removeScheduleDaemonPid(): Promise<void> {
-  await fs.rm(SCHEDULE_DAEMON_PID_PATH, { force: true });
+  await fs.rm(getScheduleDaemonPidFilePath(), { force: true });
 }
 
 export async function getScheduleDaemonStatus(): Promise<ScheduleDaemonStatus> {
   try {
-    const raw = (await fs.readFile(SCHEDULE_DAEMON_PID_PATH, "utf8")).trim();
+    const raw = (await fs.readFile(getScheduleDaemonPidFilePath(), "utf8")).trim();
     const pid = Number(raw);
     if (!Number.isInteger(pid) || pid <= 0) {
       await removeScheduleDaemonPid();
@@ -587,7 +605,7 @@ async function resolveScheduleDirectory(directory: string | undefined, cwd: stri
 async function listScheduleFiles(): Promise<string[]> {
   await ensureSchedulesDir();
   try {
-    const files = await fs.readdir(SCHEDULES_DIR);
+    const files = await fs.readdir(getSchedulesDirPath());
     return files.filter((file) => file.endsWith(".json"));
   } catch {
     return [];

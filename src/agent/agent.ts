@@ -1078,7 +1078,7 @@ export class Agent {
                   childRuntime.modelInfo?.supportsMaxOutputTokens === false
                     ? undefined
                     : Math.min(this.maxTokens, 8_192),
-                reasoningEffort: childRuntime.providerOptions?.xai.reasoningEffort,
+                reasoningEffort: childRuntime.providerOptions?.xai?.reasoningEffort,
                 tools: batchTools,
               }),
             },
@@ -1657,7 +1657,7 @@ export class Agent {
                     messages: [...this.messages, ...turnMessages],
                     temperature: 0.7,
                     maxOutputTokens: runtime.modelInfo?.supportsMaxOutputTokens === false ? undefined : this.maxTokens,
-                    reasoningEffort: runtime.providerOptions?.xai.reasoningEffort,
+                    reasoningEffort: runtime.providerOptions?.xai?.reasoningEffort,
                     tools: batchTools,
                   }),
                 },
@@ -1826,7 +1826,7 @@ export class Agent {
     observer?: ProcessMessageObserver,
   ): AsyncGenerator<StreamChunk, void, unknown> {
     this.abortController = new AbortController();
-    const signal = this.abortController.signal;
+    const signal = this.abortController!.signal;
     this.emitSubagentStatus(null);
 
     if (!this.sessionStartHookFired) {
@@ -2237,7 +2237,7 @@ export class Agent {
 
   async runVerify(onProgress?: (detail: string) => void, abortSignal?: AbortSignal): Promise<ToolResult> {
     this.abortController = new AbortController();
-    const signal = abortSignal ?? this.abortController.signal;
+    const signal = abortSignal ?? this.abortController!.signal;
     const userModelMessage: ModelMessage = { role: "user", content: "/verify" };
     this.messages.push(userModelMessage);
     this.messageSeqs.push(null);
@@ -2343,7 +2343,7 @@ function toBatchChatMessages(system: string, messages: ModelMessage[]): BatchCha
               const data =
                 part.image instanceof URL
                   ? part.image.toString()
-                  : `data:${mediaType};base64,${toBase64DataContent(part.image)}`;
+                  : `data:${mediaType};base64,${toBase64DataContent(part.image as string | ArrayBuffer | Uint8Array)}`;
               userContent.push({ type: "image_url", image_url: { url: data } });
               break;
             }
@@ -2356,7 +2356,7 @@ function toBatchChatMessages(system: string, messages: ModelMessage[]): BatchCha
               const data =
                 part.data instanceof URL
                   ? part.data.toString()
-                  : `data:${mediaType};base64,${toBase64DataContent(part.data)}`;
+                  : `data:${mediaType};base64,${toBase64DataContent(part.data as string | ArrayBuffer | Uint8Array)}`;
               userContent.push({ type: "image_url", image_url: { url: data } });
               break;
             }

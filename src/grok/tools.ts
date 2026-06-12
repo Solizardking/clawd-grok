@@ -62,15 +62,17 @@ export function createTools(
     abortSignal?: AbortSignal,
   ): Promise<{ success: boolean; output: string }> => {
     try {
+      const searchTools = {
+        ...(toolName === "web_search" ? { web_search: provider.tools.webSearch() } : {}),
+        ...(toolName === "x_search" ? { x_search: provider.tools.xSearch() } : {}),
+      } as unknown as ToolSet;
+
       const { text } = await generateText({
         model: provider.responses(RESPONSES_SEARCH_MODEL),
         maxOutputTokens: 4096,
         prompt: query,
         abortSignal,
-        tools: {
-          ...(toolName === "web_search" ? { web_search: provider.tools.webSearch() } : {}),
-          ...(toolName === "x_search" ? { x_search: provider.tools.xSearch() } : {}),
-        },
+        tools: searchTools,
       });
 
       return {
@@ -900,7 +902,8 @@ export function createTools(
     }),
     needsApproval: () => {
       try {
-        return !loadPaymentSettings().approval.autoApprove;
+        const approval = loadPaymentSettings().approval;
+        return !(typeof approval === "object" && approval !== null && approval.autoApprove === true);
       } catch {
         return true;
       }

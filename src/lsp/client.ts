@@ -190,7 +190,7 @@ export async function createLspClientSession(options: LspClientOptions): Promise
         },
       });
     },
-    async sendRequest<TResult>(method: string, params: unknown) {
+    async sendRequest<_TResult>(method: string, params: unknown) {
       ensureActive(stopped, options.serverId);
       return connection.sendRequest(method, params);
     },
@@ -291,7 +291,7 @@ async function spawnProcess(launch: LspLaunchSpec, cwd: string): Promise<ChildPr
 
 function normalizeDiagnostic(input: Diagnostic): LspDiagnostic {
   return {
-    message: input.message,
+    message: typeof input.message === "string" ? input.message : String(input.message),
     severity: input.severity,
     source: input.source,
     code: input.code !== undefined ? String(input.code) : undefined,

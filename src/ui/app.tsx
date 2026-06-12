@@ -13,6 +13,7 @@ import {
   MODELS,
   normalizeModelId,
 } from "../grok/models";
+import type { LspDiagnostic } from "../lsp/types";
 import { POPULAR_MCP_CATALOG } from "../mcp/catalog";
 import { parseEnvLines, parseHeaderLines } from "../mcp/parse-headers";
 import { toMcpServerId, validateMcpServerConfig } from "../mcp/validate";
@@ -96,12 +97,16 @@ import {
 import { getCompactTuiSelectionText } from "./terminal-selection-text";
 import { dark, type Theme } from "./theme";
 
-const STAR_PALETTE = ["#777777", "#666666", "#4a4a4a", "#333333", "#222222"];
-const LOADING_SPINNER_FRAMES = ["⬒", "⬔", "⬓", "⬕"];
+const STAR_PALETTE = ["#5c9cf5", "#66d9c2", "#888888", "#666666", "#4a4a4a", "#333333", "#444466", "#336699"];
+const LOADING_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const TOOL_SPINNER_FRAMES = ["◐", "◓", "◑", "◒"];
+const SUBAGENT_SPINNER_FRAMES = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 const PROMPT_LOADING_FRAMES = [
   { active: 0, forward: true },
   { active: 1, forward: true },
   { active: 2, forward: true },
+  { active: 3, forward: true },
+  { active: 2, forward: false },
   { active: 1, forward: false },
 ] as const;
 
@@ -134,59 +139,73 @@ const HERO_ROWS: Row[] = [
   {
     stars: [
       { col: 0, ch: "·" },
+      { col: 7, ch: "·" },
       { col: 13, ch: "*" },
       { col: 21, ch: "·" },
+      { col: 28, ch: "·" },
       { col: 34, ch: "·" },
     ],
   },
   {
     stars: [
       { col: 3, ch: "*" },
-      { col: 11, ch: "·" },
+      { col: 9, ch: "·" },
       { col: 17, ch: "·" },
+      { col: 22, ch: "·" },
       { col: 25, ch: "*" },
+      { col: 30, ch: "·" },
     ],
   },
   {
     stars: [
+      { col: 1, ch: "·" },
       { col: 6, ch: "·" },
       { col: 12, ch: "·" },
       { col: 15, ch: "·" },
       { col: 18, ch: "·" },
       { col: 24, ch: "·" },
+      { col: 31, ch: "*" },
     ],
   },
   {
     stars: [
       { col: 2, ch: "·" },
+      { col: 8, ch: "·" },
       { col: 10, ch: "·" },
       { col: 19, ch: "·" },
       { col: 27, ch: "·" },
+      { col: 33, ch: "·" },
     ],
     grok: 13,
   },
   {
     stars: [
+      { col: 1, ch: "·" },
       { col: 6, ch: "·" },
       { col: 12, ch: "·" },
       { col: 15, ch: "·" },
       { col: 18, ch: "·" },
       { col: 24, ch: "·" },
+      { col: 32, ch: "·" },
     ],
   },
   {
     stars: [
       { col: 3, ch: "·" },
-      { col: 11, ch: "*" },
+      { col: 9, ch: "*" },
       { col: 17, ch: "·" },
+      { col: 22, ch: "·" },
       { col: 25, ch: "·" },
+      { col: 30, ch: "*" },
     ],
   },
   {
     stars: [
       { col: 0, ch: "*" },
+      { col: 7, ch: "·" },
       { col: 13, ch: "·" },
       { col: 21, ch: "*" },
+      { col: 28, ch: "·" },
       { col: 34, ch: "·" },
     ],
   },
@@ -197,7 +216,7 @@ function HeroLogo({ t }: { t: Theme }) {
   const starIdx = useRef(0);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 900);
+    const id = setInterval(() => setTick((n) => n + 1), 450);
     return () => clearInterval(id);
   }, []);
 
@@ -217,7 +236,7 @@ function HeroLogo({ t }: { t: Theme }) {
           if (row.grok !== undefined && cursor <= row.grok && star.col > row.grok) {
             els.push(" ".repeat(row.grok - cursor));
             els.push(
-              <span key="grok" style={{ fg: t.primary }}>
+              <span key="grok" style={{ fg: tick % 6 < 3 ? t.primary : t.accent }}>
                 {"Grok"}
               </span>,
             );
@@ -3433,7 +3452,7 @@ export function App({ agent, startupConfig, initialMessage, onExit }: AppProps) 
             <scrollbox ref={scrollRef} flexGrow={1} stickyScroll={true} stickyStart={"bottom" as any}>
               {messages.map((msg, i) => (
                 <MessageView
-                  key={`${msg.timestamp.getTime()}-${msg.type}-${msg.remoteKey ?? ""}-${msg.content.slice(0, 24)}`}
+                  key={`${(msg.timestamp ?? new Date(0)).getTime()}-${msg.type}-${msg.remoteKey ?? ""}-${String(msg.content).slice(0, 24)}`}
                   entry={msg}
                   index={i}
                   t={t}
@@ -3475,6 +3494,7 @@ export function App({ agent, startupConfig, initialMessage, onExit }: AppProps) 
               {streamContent && (
                 <box paddingLeft={3} marginTop={1} flexShrink={0}>
                   <Markdown content={streamContent} t={t} />
+                  <StreamCursor t={t} />
                 </box>
               )}
               {/* Waiting indicator */}
@@ -4034,7 +4054,7 @@ function PromptLoadingBoxes({ t: _t, color }: { t: Theme; color: string }) {
 
   return (
     <text>
-      {[0, 1, 2].map((idx) => (
+      {[0, 1, 2, 3].map((idx) => (
         <span key={idx} style={{ fg: promptLoadingCellColor(color, idx, step.active, step.forward) }}>
           {promptLoadingCellGlyph(idx, step.active, step.forward)}
         </span>
@@ -4445,7 +4465,7 @@ function parsePatch(patch: string): DiffRow[] {
 }
 
 function DiffView({ t, diff }: { t: Theme; diff: FileDiff }) {
-  const rows = parsePatch(diff.patch);
+  const rows = parsePatch(diff.patch ?? "");
   if (rows.length === 0) return null;
 
   const truncated = rows.length > MAX_DIFF_ROWS;
@@ -4579,7 +4599,7 @@ function LspDiagnosticsView({ t, diagnostics }: { t: Theme; diagnostics: NonNull
         {files.map((entry) => (
           <box key={`${entry.serverId}:${entry.filePath}`} flexDirection="column">
             <text fg={t.textDim}>{`${entry.serverId} • ${entry.filePath}`}</text>
-            {entry.diagnostics.slice(0, 5).map((diagnostic, index) => (
+            {entry.diagnostics.slice(0, 5).map((diagnostic: LspDiagnostic, index: number) => (
               <text
                 // biome-ignore lint/suspicious/noArrayIndexKey: diagnostics may not include stable ids
                 key={`${entry.serverId}:${entry.filePath}:${index}`}
@@ -4610,25 +4630,50 @@ function formatLspSeverity(severity?: number): string {
   }
 }
 
+const SHIMMER_MESSAGES = [
+  "Planning next moves",
+  "Reasoning through options",
+  "Thinking deeply",
+  "Synthesizing context",
+  "Crafting response",
+  "Analyzing patterns",
+  "Grokking the problem",
+];
+
 function ShimmerText({ t, text }: { t: Theme; text: string }) {
+  const startRef = useRef(Date.now());
+  const [tick, setTick] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTick((n) => n + 1);
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1100);
+    return () => clearInterval(id);
+  }, []);
+
+  const allMessages = [text, ...SHIMMER_MESSAGES.filter((m) => m !== text)];
+  const displayText = allMessages[tick % allMessages.length] ?? text;
+
   return (
     <box paddingLeft={3}>
       <text>
-        <span style={{ fg: t.textMuted }}>
+        <span style={{ fg: t.accent }}>
           <LoadingSpinner />
         </span>
-        <span style={{ fg: t.textMuted }}> {text}</span>
+        <span style={{ fg: t.textMuted }}> {displayText}</span>
+        {elapsed >= 2 ? <span style={{ fg: t.textDim }}>{` ${elapsed}s`}</span> : null}
       </text>
     </box>
   );
 }
 
-function InlineTool({ t, pending: _pending, children }: { t: Theme; pending: boolean; children: React.ReactNode }) {
+function InlineTool({ t, pending, children }: { t: Theme; pending: boolean; children: React.ReactNode }) {
   return (
     <box paddingLeft={3}>
-      <text fg={t.textMuted}>
-        {"→ "}
-        {children}
+      <text fg={pending ? t.accent : t.textMuted}>
+        {pending ? <ToolSpinner /> : "→"} {children}
       </text>
     </box>
   );
@@ -4643,7 +4688,7 @@ function SubagentTaskLine({ t, agent, label, pending }: { t: Theme; agent: strin
       <text>
         {pending ? (
           <span style={{ fg: t.subagentAccent }}>
-            <LoadingSpinner />
+            <SubagentSpinner />
           </span>
         ) : null}
         {pending ? " " : ""}
@@ -4663,7 +4708,7 @@ function DelegationTaskLine({ t, label, pending, id }: { t: Theme; label: string
       <text>
         {pending ? (
           <span style={{ fg: t.subagentAccent }}>
-            <LoadingSpinner />
+            <SubagentSpinner />
           </span>
         ) : (
           <span style={{ fg: t.subagentAccent }}>{"◆"}</span>
@@ -4685,11 +4730,44 @@ function LoadingSpinner() {
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setFrame((n) => (n + 1) % LOADING_SPINNER_FRAMES.length), 120);
+    const id = setInterval(() => setFrame((n) => (n + 1) % LOADING_SPINNER_FRAMES.length), 80);
     return () => clearInterval(id);
   }, []);
 
   return <>{LOADING_SPINNER_FRAMES[frame]}</>;
+}
+
+function ToolSpinner() {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setFrame((n) => (n + 1) % TOOL_SPINNER_FRAMES.length), 100);
+    return () => clearInterval(id);
+  }, []);
+
+  return <>{TOOL_SPINNER_FRAMES[frame]}</>;
+}
+
+function SubagentSpinner() {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setFrame((n) => (n + 1) % SUBAGENT_SPINNER_FRAMES.length), 70);
+    return () => clearInterval(id);
+  }, []);
+
+  return <>{SUBAGENT_SPINNER_FRAMES[frame]}</>;
+}
+
+function StreamCursor({ t }: { t: Theme }) {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => setVisible((v) => !v), 530);
+    return () => clearInterval(id);
+  }, []);
+
+  return <span style={{ fg: t.accent }}>{visible ? "▋" : " "}</span>;
 }
 
 function SubagentActivity({ t, status }: { t: Theme; status: SubagentStatus }) {
