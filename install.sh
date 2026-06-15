@@ -2,7 +2,9 @@
 set -euo pipefail
 
 APP="clawd"
-REPO="Solizardking/clawd-grok"
+REPO="open-clawd/clawd-grok"
+RELEASES_BASE="${CLAWD_RELEASES_BASE:-https://open-clawd.local/releases}"
+RAW_BASE="${CLAWD_RAW_BASE:-https://open-clawd.local/raw}"
 USER_DIR="${HOME}/.clawd"
 INSTALL_DIR="${CLAWD_INSTALL_DIR:-${HOME}/.local/bin}"
 INSTALL_METADATA="${USER_DIR}/install-metadata.json"
@@ -11,13 +13,13 @@ PATH_MARKER="# clawd"
 function print_help() {
     echo "Usage: install.sh [VERSION]"
     echo ""
-    echo "Install Clawd from GitHub Releases."
+    echo "Install Clawd from the Clawd release artifacts."
     echo ""
-    echo "  curl -fsSL https://raw.githubusercontent.com/Solizardking/clawd-grok/newnew/install.sh | bash"
+    echo "  curl -fsSL ${RAW_BASE}/install.sh | bash"
     echo ""
     echo "Install a specific version:"
     echo ""
-    echo "  curl -fsSL https://raw.githubusercontent.com/Solizardking/clawd-grok/newnew/install.sh | bash -s v1.0.0"
+    echo "  curl -fsSL ${RAW_BASE}/install.sh | bash -s v1.0.0"
     echo ""
     echo "Environment variables:"
     echo "  CLAWD_INSTALL_DIR    Install directory (default: ${HOME}/.local/bin)"
@@ -79,9 +81,9 @@ echo "Downloading Clawd ${VERSION} (${ASSET_NAME})..."
 
 DOWNLOAD_URL=""
 if [[ "${VERSION}" == "latest" ]]; then
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ASSET_NAME}"
+    DOWNLOAD_URL="${RELEASES_BASE}/latest/download/${ASSET_NAME}"
 else
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET_NAME}"
+    DOWNLOAD_URL="${RELEASES_BASE}/download/${VERSION}/${ASSET_NAME}"
 fi
 
 TMP_DIR="$(mktemp -d)"
@@ -103,7 +105,7 @@ if [[ "${HTTP_CODE}" != "200" ]]; then
     echo ""
     echo "This may be because the release hasn't been published yet."
     echo "Try building from source instead:"
-    echo "  git clone https://github.com/${REPO}.git"
+    echo "  git clone ${RELEASES_BASE%-releases}/${REPO}.git"
     echo "  cd clawd-grok"
     echo "  bun install && bun run build"
     exit 1
@@ -112,9 +114,9 @@ fi
 # Verify checksum if available
 CHECKSUM_URL=""
 if [[ "${VERSION}" == "latest" ]]; then
-    CHECKSUM_URL="https://github.com/${REPO}/releases/latest/download/clawd-checksums-sha256.txt"
+    CHECKSUM_URL="${RELEASES_BASE}/latest/download/clawd-checksums-sha256.txt"
 else
-    CHECKSUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/clawd-checksums-sha256.txt"
+    CHECKSUM_URL="${RELEASES_BASE}/download/${VERSION}/clawd-checksums-sha256.txt"
 fi
 
 CHECKSUM_HTTP_CODE=$(curl -fsSL -o "${TMP_CHECKSUM}" -w '%{http_code}' "${CHECKSUM_URL}" 2>&1 || true)
@@ -153,7 +155,7 @@ if [[ "${CHECKSUM_HTTP_CODE}" == "200" ]]; then
 else
     echo "Warning: No checksum file found (HTTP ${CHECKSUM_HTTP_CODE}). Skipping verification."
     echo "  Consider building from source for maximum security:"
-    echo "  git clone https://github.com/${REPO}.git"
+    echo "  git clone ${RELEASES_BASE%-releases}/${REPO}.git"
     echo "  cd clawd-grok"
     echo "  bun install && bun run build"
 fi

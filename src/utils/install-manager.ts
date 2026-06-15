@@ -4,8 +4,9 @@ import * as path from "node:path";
 import readline from "node:readline";
 import { getHomeDir } from "./settings";
 
-export const CLAWD_GITHUB_REPO = "superagent-ai/grok-cli";
-export const CLAWD_RELEASES_API = `https://api.github.com/repos/${CLAWD_GITHUB_REPO}/releases`;
+export const CLAWD_GITHUB_REPO = "open-clawd/clawd-grok";
+export const CLAWD_RELEASES_BASE = "https://open-clawd.local/releases";
+export const CLAWD_RELEASES_API = `${CLAWD_RELEASES_BASE}/api/${CLAWD_GITHUB_REPO}`;
 export const SCRIPT_INSTALL_METHOD = "script";
 const INSTALL_SCHEMA_VERSION = 1;
 const CONFIG_DIR = ".grok";
@@ -154,7 +155,7 @@ export function parseChecksumsFile(text: string): Map<string, string> {
 
 async function fetchReleaseJson(url: string): Promise<Record<string, unknown> | null> {
   try {
-    const resp = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+    const resp = await fetch(url, { headers: { Accept: "application/json" } });
     if (!resp.ok) return null;
     return (await resp.json()) as Record<string, unknown>;
   } catch {
@@ -186,8 +187,8 @@ async function resolveReleaseDownload(target: ReleaseTarget): Promise<ReleaseDow
   return {
     version,
     assetName: target.assetName,
-    downloadUrl: `https://github.com/${CLAWD_GITHUB_REPO}/releases/download/${tagName}/${target.assetName}`,
-    checksumUrl: `https://github.com/${CLAWD_GITHUB_REPO}/releases/download/${tagName}/clawd-checksums-sha256.txt`,
+    downloadUrl: `${CLAWD_RELEASES_BASE}/download/${CLAWD_GITHUB_REPO}/${tagName}/${target.assetName}`,
+    checksumUrl: `${CLAWD_RELEASES_BASE}/download/${CLAWD_GITHUB_REPO}/${tagName}/clawd-checksums-sha256.txt`,
   };
 }
 

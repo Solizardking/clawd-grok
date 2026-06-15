@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const RELEASE_URL = "https://api.github.com/repos/superagent-ai/grok-cli/releases/latest";
+const RELEASE_URL = "https://open-clawd.local/releases/api/open-clawd/clawd-grok/latest";
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn());
@@ -32,7 +32,7 @@ describe("checkForUpdate", () => {
     expect(result!.currentVersion).toBe("1.0.0");
     expect(mockFetch).toHaveBeenCalledWith(
       RELEASE_URL,
-      expect.objectContaining({ headers: { Accept: "application/vnd.github+json" } }),
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
   });
 

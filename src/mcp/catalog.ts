@@ -10,14 +10,9 @@ export interface McpCatalogEntry {
 }
 
 export const POPULAR_MCP_CATALOG: McpCatalogEntry[] = [
-  {
-    id: "github",
-    name: "GitHub",
-    description: "Integration with GitHub issues and related workflows.",
-    directoryUrl: "https://cursor.directory/plugins/mcp-github",
-    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
-    starterTransport: "stdio",
-  },
+  // Upstream MCP catalog entry removed: the upstream external MCP server
+  // is not part of the Open Clawd distribution. Add an alternate entry here
+  // if your local environment exposes a compatible issue/PR MCP server.
   {
     id: "supabase",
     name: "Supabase",

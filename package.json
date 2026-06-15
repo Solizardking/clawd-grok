@@ -11,7 +11,7 @@
     }
   },
   "bin": {
-    "clawd": "dist/index.js"
+    "clawd-grok": "dist/index.js"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
@@ -81,8 +81,8 @@
   ],
   "license": "MIT",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/clawd-grok/clawd-grok"
+    "type": "local",
+    "directory": "clawd-grok"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^1.0.25",
