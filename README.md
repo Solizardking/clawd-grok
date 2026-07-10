@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
 </p>
 
-# 🦞 Clawd Grok — World's First Grok-Powered Solana Perps CLI
+🦞 ClawdGrok — World's First Grok-Powered Solana Perps Agent
 
 > **"Grok the markets. Claw the profits."**
 
